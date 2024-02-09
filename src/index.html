@@ -4,20 +4,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="stylesheet" href="./css/styles.css" />
-  <link rel="stylesheet" href="./css/reset.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat&family=Raleway:wght@700&display=swap"
+  <title>Document</title>
+  <link href="./css/gallery.css" rel="stylesheet" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600&family=Montserrat:wght@400;500;600&display=swap"
     rel="stylesheet" />
-  <title>Gallery</title>
 </head>
 
 <body>
-  <form class="form">
-    <input type="text" class="form-input" name="input" placeholder="Search images..." required />
-    <button type="submit" class="form-btn">Search</button>
+  <form action="#" method="get" class="search-form">
+    <input type="text" id="query" class="image-query" />
+    <button type="submit" class="search-button">Search</button>
   </form>
-  <span class="loader"></span>
-  <div class="gallery"></div>
+  <div class="loader"></div>
+  <div id="gallery" class="gallery"></div>
   <script type="module" src="./main.js"></script>
 </body>
 
