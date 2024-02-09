@@ -1,87 +1,135 @@
-import iziToast from 'izitoast';
-import 'izitoast/dist/css/iziToast.min.css';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
 
-const form = document.querySelector('.form');
-const gallery = document.querySelector('.gallery');
-const loader = document.querySelector('.loader');
+import iziToast from 'izitoast';
+import 'izitoast/dist/css/iziToast.min.css';
 
-loader.style.display = 'none';
-const searchParams = {
-    key: '42200022-9c7e7676f0f903944c054771a',
-    image_type: 'photo',
-    orientation: 'horizontal',
-    safesearch: true,
-    q: '',
-}
+const galleryContainer = document.querySelector('.gallery');
 
-form.addEventListener('submit', e => {
-    e.preventDefault();
-    loader.style.display = 'block';
-    const inputValue = e.target.elements.input.value;
-    searchParams.q = inputValue;
-    getPhotoByName()
-        .then(images => createGallery(images))
-        .catch(error => console.log(error))
-    e.target.reset();
+const searchForm = document.querySelector('.search-form');
+
+const loaderContainer = document.querySelector('.loader');
+
+const GALLERY_LINK = 'gallery-link';
+
+searchForm.addEventListener('submit', function (event) {
+  event.preventDefault();
+  const queryInput = event.target.elements.query.value;
+
+  if (queryInput === '') {
+    return;
+  }
+
+  galleryContainer.innerHTML = '';
+  loaderContainer.style.display = 'block';
+
+  fetchImages(queryInput)
+    .then(function ({ hits, total }) {
+      if (Array.isArray(hits) && hits.length > 0) {
+        const galleryHTML = hits.map(createGallery).join('');
+        galleryContainer.innerHTML = galleryHTML;
+
+        toastSuccess(`Was found: ${total} images`);
+
+        const lightbox = new SimpleLightbox(`.${GALLERY_LINK}`);
+
+        lightbox.refresh();
+      } else {
+        toastError(
+          'Sorry, there are no images matching your search query. Please try again!'
+        );
+      }
+    })
+    .catch(function (error) {
+      toastError(`Error fetching images: ${error}`);
+    })
+    .finally(function () {
+      searchForm.reset();
+      loaderContainer.style.display = 'none';
+    });
 });
 
-function getPhotoByName() {
-    const urlParams = new URLSearchParams(searchParams);
-    return fetch(`https://pixabay.com/api/?${urlParams}`)
-        .then(res => {
-        if (res.ok) {
-            return res.json();
-        } else {
-            throw new Error(res.status);
-        }
-    })
+
+const toastOptions = {
+  titleColor: '#FFFFFF',
+  messageColor: '#FFFFFF',
+  messageSize: '16px',
+  position: 'topRight',
+  displayMode: 'replace',
+  closeOnEscape: true,
+  pauseOnHover: false,
+  maxWidth: 432,
+  messageSize: '16px',
+  messageLineHeight: '24px',
+};
+
+
+function toastError(message) {
+  iziToast.show({
+    message,
+    backgroundColor: '#EF4040',
+    progressBarColor: '#FFE0AC',
+    icon: 'icon-close',
+    ...toastOptions,
+  });
 }
 
-function createGallery(images) {
-    if (images.hits.length === 0) {
-       iziToast.show({
-            message: 'Sorry, there are no images matching your search query. Please try again!',
-            messageColor: '#FFFFFF',
-            backgroundColor: '#EF4040',
-            position: 'topRight',
-            messageSize: '16px',
-            messageLineHeight: '24px',
-            maxWidth: '432px',
-       });
-        gallery.innerHTML = '';
-    } else {
-        const link = images.hits.map(image => `<a class="gallery-link" href="${image.largeImageURL}">
-        <img class="gallery-image"
-        src="${image.webformatURL}"
-        alt="${image.tags}"
-         </a>
-        <div class="img-content">
-        <div>
-        <h3>Likes</h3>
-        <p>${image.likes}</p>
-        </div>
 
-        <div>
-        <h3>Views</h3>
-        <p>${image.views}</p>
-        </div>
+function toastSuccess(message) {
+  iziToast.show({
+    message,
+    backgroundColor: '#59A10D',
+    progressBarColor: '#B5EA7C',
+    icon: 'icon-chek',
+    ...toastOptions,
+  });
+}
 
-        <div>
-        <h3>Comments</h3>
-        <p>${image.comments}</p>
-        </div>
 
-        <div>
-        <h3>Downloads</h3>
-        <p>${image.downloads}</p>
-        </div>
-        </div>
-        `).join('');
-        gallery.innerHTML = link;
-    }
-    let lightBox = new SimpleLightbox('.gallery-link');
-    lightBox.refresh();
-    loader.style.display = 'none';
+const BASE_URL = 'https://pixabay.com/api/';
+
+
+function fetchImages(q) {
+  const searchParams = new URLSearchParams({
+    key: '42137546-386b5be41212ccd429cab5a80',
+    q,
+    image_type: 'photo',
+    orientation: 'horizontal',
+    safeSearch: true,
+  });
+
+  const PARAMS = `?${searchParams}`;
+  const url = BASE_URL + PARAMS;
+
+  return fetch(url)
+    .then(response => response.json())
+    .catch(error => {
+      toastError(`Error fetching images: ${error}`);
+      throw error;
+    });
+}
+
+
+function createGallery({
+  largeImageURL,
+  tags,
+  webformatURL,
+  likes,
+  views,
+  comments,
+  downloads,
+}) {
+  return `
+  <a href="${largeImageURL}" class="${GALLERY_LINK}">
+     <figure>
+      <img src="${webformatURL}" alt="${tags}" class="gallery-image">
+      <figcaption class="gallery__figcaption">
+        <div class="image-item">Likes <span class="image-elem">${likes}</span></div>
+        <div class="image-item">Views <span class="image-elem">${views}</span></div>
+        <div class="image-item">Comments <span class="image-elem">${comments}</span></div>
+        <div class="image-item">Downloads <span class="image-elem">${downloads}</span></div>
+  </figcaption>
+  </figure>
+</a>
+`;
 }
