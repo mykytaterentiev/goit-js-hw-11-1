@@ -1,85 +1,121 @@
-import iziToast from "izitoast";
-import "izitoast/dist/css/iziToast.min.css";
-import SimpleLightbox from "simplelightbox";
-import "simplelightbox/dist/simple-lightbox.min.css";
+import iziToast from 'izitoast';
+import 'izitoast/dist/css/iziToast.min.css';
+import SimpleLightbox from 'simplelightbox';
+import 'simplelightbox/dist/simple-lightbox.min.css';
+import './css/styles.css';
+import './css/loader.css';
+import errorIcon from './img/bi_x-octagon.svg';
 
-const searchForm = document.querySelector('.search-form');
-const pictures = document.querySelector('.gallery');
-const spanLoader = document.querySelector('.loader');
+const refs = {
+  form: document.querySelector('.form'),
+  gallery: document.querySelector('.gallery'),
+  loader: document.querySelector('.loader'),
+};
+function toggleLoader() {
+  refs.loader.classList.toggle('hidden');
+}
 
-hideLoader();
-searchForm.addEventListener('submit', searchImage);
-function searchImage(event) {
-    event.preventDefault();
-    const image = event.target.elements.image.value.trim();
-    if (image === '') {
-        pictures.innerHTML = "";
-        iziToast.show({
-            title: 'Error',
-            message: 'Please enter a search term to begin your search.',
-            titleSize: '16px',
-            titleLineHeight: '150%',
-            messageSize: '16px',
-            messageLineHeight: '150%',
-            backgroundColor: '#ef4040',
-            position: 'bottomRight',
+refs.form.addEventListener('submit', onFormSubmit);
+
+function getImagesByName(name) {
+  const searchParams = new URLSearchParams({
+    key: '42132229-e88b92984f0d2a7001cb07c65',
+    image_type: 'photo',
+    orientation: 'horizontal',
+    safesearch: 'true',
+    q: name,
+  });
+  const BASE_URL = 'https://pixabay.com/api/';
+  const PARAMS = `?${searchParams}`;
+  const url = BASE_URL + PARAMS;
+  return fetch(url).then(res => {
+    if (res.ok) {
+      return res.json();
+    } else {
+      throw new Error(res.status);
+    }
+  });
+}
+
+function onFormSubmit(event) {
+  event.preventDefault();
+  toggleLoader();
+  const query = event.target.elements.query.value;
+  getImagesByName(query)
+    .then(data => {
+      toggleLoader();
+      if (query === '') {
+        iziToast.warning({
+          message:
+            'Sorry, you forgot to enter a search term. Please try again!',
+          position: 'topRight',
+          messageSize: '16px',
+          timeout: 2000,
         });
         return;
-    } else {
-        showLoader();
-        getImage(image).then(data => {
-            if (data.totalHits > 0) {
-                const markup = data.hits.map(imageTemplate).join('\n\n');
-                pictures.innerHTML = markup;
-                gallery.refresh();
-            } else {
-                pictures.innerHTML = "";
-                iziToast.show({
-                    title: 'Error',
-                    message: 'There are no images matching your search query. Please try again!',
-                    titleSize: '16px',
-                    titleLineHeight: '150%',
-                    messageSize: '16px',
-                    messageLineHeight: '150%',
-                    backgroundColor: '#ef4040',
-                    position: 'bottomRight',
-                });
-            }
-        }).catch(error => console.error(error)) .finally(() => {
-        hideLoader();
+      } else if (parseInt(data.totalHits) > 0) {
+        renderMarkup(data.hits);
+      } else {
+        refs.gallery.innerHTML = '';
+        iziToast.error({
+          message:
+            'Sorry, there are no images matching your search query. Please try again!',
+          position: 'topRight',
+          backgroundColor: 'red',
+          messageColor: 'white',
+          messageSize: '16px',
+          iconColor: 'white',
+          iconUrl: errorIcon,
+          color: 'white',
+          timeout: 2000,
+        });
+      }
+    })
+    .catch(err => {
+      iziToast.error({
+        message: 'Error',
+        position: 'topRight',
+        backgroundColor: 'red',
+        messageColor: 'white',
+        messageSize: '16px',
+        iconColor: 'white',
+        iconUrl: errorIcon,
+        color: 'white',
+        timeout: 2000,
+      });
     });
-    }
-    evt.target.reset(); 
+  event.target.reset();
 }
 
-function getImage(imageName) {
-    const BASE_URL = 'https://pixabay.com/api/';
-    const PARAMS = `?key=42174217-6daf07c41ac875e98ae2151fa&q=${imageName}&image_type=photo&orientation=horizontal&safesearch=true`;
-    const url = BASE_URL + PARAMS;
-    
-    return fetch(url).then(response => {
-        if (!response.ok) {
-            throw new Error(response.status);
-        }
-        return response.json();
-    }); 
+function galleryTemplate({
+  largeImageURL,
+  webformatURL,
+  tags,
+  likes,
+  views,
+  comments,
+  downloads,
+}) {
+  return `<a class="gallery-link" href="${largeImageURL}"><img class="gallery-image" src="${webformatURL}" alt="${tags}"/>
+  <div class="gallery-review">
+  <div class="gallery-review-item"><b>Likes</b> <span>${likes}</span></div>
+  <div class="gallery-review-item"><b>Views</b> <span>${views}</span></div>
+  <div class="gallery-review-item"><b>Comments</b> <span>${comments}</span></div>
+  <div class="gallery-review-item"><b>Downloads</b> <span>${downloads}</span></div>
+  </div></a>
+    `;
 }
 
-function imageTemplate ({webformatURL, largeImageURL, tags, likes, views, comments, downloads}) {
-    return `<li class="gallery-item"><a href="${largeImageURL}"><img class="gallery-image" src="${webformatURL}" alt="${tags}" /></a>
-<div class="description"> <p>Likes <span>${likes}</span></p><p>Views <span>${views}</span></p><p>Comments <span>${comments}</span></p><p>Downloads <span>${downloads}</span></p></div></li>`;
-}
-
-const gallery = new SimpleLightbox('.gallery a', {
-    captionsData: 'alt',
-    captionDelay: 250,
+let gallery = new SimpleLightbox('.gallery a', {
+  showCounter: false,
+  captionDelay: 250,
+  captions: true,
+  captionsData: 'alt',
+  captionPosition: 'bottom',
 });
 
-function showLoader() {
-    spanLoader.style.display = 'block';
-    
-}
-
-function hideLoader() {
-    spanLoader.style.display = 'none';
+function renderMarkup(images) {
+  const markup = images.map(galleryTemplate).join('');
+  refs.gallery.innerHTML = markup;
+  gallery.refresh();
 }
