@@ -1,135 +1,85 @@
-import SimpleLightbox from 'simplelightbox';
-import 'simplelightbox/dist/simple-lightbox.min.css';
-
-import iziToast from 'izitoast';
-import 'izitoast/dist/css/iziToast.min.css';
-
-const galleryContainer = document.querySelector('.gallery');
+import iziToast from "izitoast";
+import "izitoast/dist/css/iziToast.min.css";
+import SimpleLightbox from "simplelightbox";
+import "simplelightbox/dist/simple-lightbox.min.css";
 
 const searchForm = document.querySelector('.search-form');
+const pictures = document.querySelector('.gallery');
+const spanLoader = document.querySelector('.loader');
 
-const loaderContainer = document.querySelector('.loader');
-
-const GALLERY_LINK = 'gallery-link';
-
-searchForm.addEventListener('submit', function (event) {
-  event.preventDefault();
-  const queryInput = event.target.elements.query.value;
-
-  if (queryInput === '') {
-    return;
-  }
-
-  galleryContainer.innerHTML = '';
-  loaderContainer.style.display = 'block';
-
-  fetchImages(queryInput)
-    .then(function ({ hits, total }) {
-      if (Array.isArray(hits) && hits.length > 0) {
-        const galleryHTML = hits.map(createGallery).join('');
-        galleryContainer.innerHTML = galleryHTML;
-
-        toastSuccess(`Was found: ${total} images`);
-
-        const lightbox = new SimpleLightbox(`.${GALLERY_LINK}`);
-
-        lightbox.refresh();
-      } else {
-        toastError(
-          'Sorry, there are no images matching your search query. Please try again!'
-        );
-      }
-    })
-    .catch(function (error) {
-      toastError(`Error fetching images: ${error}`);
-    })
-    .finally(function () {
-      searchForm.reset();
-      loaderContainer.style.display = 'none';
+hideLoader();
+searchForm.addEventListener('submit', searchImage);
+function searchImage(event) {
+    event.preventDefault();
+    const image = event.target.elements.image.value.trim();
+    if (image === '') {
+        pictures.innerHTML = "";
+        iziToast.show({
+            title: 'Error',
+            message: 'Please enter a search term to begin your search.',
+            titleSize: '16px',
+            titleLineHeight: '150%',
+            messageSize: '16px',
+            messageLineHeight: '150%',
+            backgroundColor: '#ef4040',
+            position: 'bottomRight',
+        });
+        return;
+    } else {
+        showLoader();
+        getImage(image).then(data => {
+            if (data.totalHits > 0) {
+                const markup = data.hits.map(imageTemplate).join('\n\n');
+                pictures.innerHTML = markup;
+                gallery.refresh();
+            } else {
+                pictures.innerHTML = "";
+                iziToast.show({
+                    title: 'Error',
+                    message: 'There are no images matching your search query. Please try again!',
+                    titleSize: '16px',
+                    titleLineHeight: '150%',
+                    messageSize: '16px',
+                    messageLineHeight: '150%',
+                    backgroundColor: '#ef4040',
+                    position: 'bottomRight',
+                });
+            }
+        }).catch(error => console.error(error)) .finally(() => {
+        hideLoader();
     });
+    }
+    evt.target.reset(); 
+}
+
+function getImage(imageName) {
+    const BASE_URL = 'https://pixabay.com/api/';
+    const PARAMS = `?key=42174217-6daf07c41ac875e98ae2151fa&q=${imageName}&image_type=photo&orientation=horizontal&safesearch=true`;
+    const url = BASE_URL + PARAMS;
+    
+    return fetch(url).then(response => {
+        if (!response.ok) {
+            throw new Error(response.status);
+        }
+        return response.json();
+    }); 
+}
+
+function imageTemplate ({webformatURL, largeImageURL, tags, likes, views, comments, downloads}) {
+    return `<li class="gallery-item"><a href="${largeImageURL}"><img class="gallery-image" src="${webformatURL}" alt="${tags}" /></a>
+<div class="description"> <p>Likes <span>${likes}</span></p><p>Views <span>${views}</span></p><p>Comments <span>${comments}</span></p><p>Downloads <span>${downloads}</span></p></div></li>`;
+}
+
+const gallery = new SimpleLightbox('.gallery a', {
+    captionsData: 'alt',
+    captionDelay: 250,
 });
 
-
-const toastOptions = {
-  titleColor: '#FFFFFF',
-  messageColor: '#FFFFFF',
-  messageSize: '16px',
-  position: 'topRight',
-  displayMode: 'replace',
-  closeOnEscape: true,
-  pauseOnHover: false,
-  maxWidth: 432,
-  messageSize: '16px',
-  messageLineHeight: '24px',
-};
-
-
-function toastError(message) {
-  iziToast.show({
-    message,
-    backgroundColor: '#EF4040',
-    progressBarColor: '#FFE0AC',
-    icon: 'icon-close',
-    ...toastOptions,
-  });
+function showLoader() {
+    spanLoader.style.display = 'block';
+    
 }
 
-
-function toastSuccess(message) {
-  iziToast.show({
-    message,
-    backgroundColor: '#59A10D',
-    progressBarColor: '#B5EA7C',
-    icon: 'icon-chek',
-    ...toastOptions,
-  });
-}
-
-
-const BASE_URL = 'https://pixabay.com/api/';
-
-
-function fetchImages(q) {
-  const searchParams = new URLSearchParams({
-    key: '42137546-386b5be41212ccd429cab5a80',
-    q,
-    image_type: 'photo',
-    orientation: 'horizontal',
-    safeSearch: true,
-  });
-
-  const PARAMS = `?${searchParams}`;
-  const url = BASE_URL + PARAMS;
-
-  return fetch(url)
-    .then(response => response.json())
-    .catch(error => {
-      toastError(`Error fetching images: ${error}`);
-      throw error;
-    });
-}
-
-
-function createGallery({
-  largeImageURL,
-  tags,
-  webformatURL,
-  likes,
-  views,
-  comments,
-  downloads,
-}) {
-  return `
-  <a href="${largeImageURL}" class="${GALLERY_LINK}">
-     <figure>
-      <img src="${webformatURL}" alt="${tags}" class="gallery-image">
-      <figcaption class="gallery__figcaption">
-        <div class="image-item">Likes <span class="image-elem">${likes}</span></div>
-        <div class="image-item">Views <span class="image-elem">${views}</span></div>
-        <div class="image-item">Comments <span class="image-elem">${comments}</span></div>
-        <div class="image-item">Downloads <span class="image-elem">${downloads}</span></div>
-  </figcaption>
-  </figure>
-</a>
-`;
+function hideLoader() {
+    spanLoader.style.display = 'none';
 }
