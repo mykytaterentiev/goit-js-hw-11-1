@@ -19,7 +19,7 @@ refs.form.addEventListener('submit', onFormSubmit);
 
 function getImagesByName(name) {
   const searchParams = new URLSearchParams({
-    key: '42132229-e88b92984f0d2a7001cb07c65',
+    key: '42272856-fbb9ecaa9aa7f62044da3b204',
     image_type: 'photo',
     orientation: 'horizontal',
     safesearch: 'true',
